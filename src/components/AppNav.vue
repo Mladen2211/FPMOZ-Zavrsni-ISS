@@ -8,7 +8,8 @@ export default {
   name: 'navbar',
 };
 </script>
-<style scoped>
+
+<style>
 img{
     height: 70px;
 }

@@ -10,8 +10,7 @@
         <b-collapse id="accordion-1" visible accordion="my-accordion" role="tabpanel">
           <b-card-body>
                   <swiper :options="swiperOption">
-                    
-                    <swiper-slide  v-for="faks in fakulteti"><b-img :class="!isMobile() ? 'img' : 'imgsec'" @click="login(faks.username)" v-b-toggle.accordion-1 alt="logo" :src="faks.img"></b-img></swiper-slide>
+                    <swiper-slide  v-for="faks in fakulteti" :key="faks.id"><b-img :class="!isMobile() ? 'img' : 'imgsec'" @click="login(faks.username)" v-b-toggle.accordion-1 alt="logo" :src="faks.img"></b-img></swiper-slide>
                     <div class="swiper-button-prev" slot="button-prev"></div>
                     <div class="swiper-button-next" slot="button-next"></div>
                     <div class="swiper-pagination" slot="pagination"></div>
@@ -35,28 +34,26 @@
             <b-form-group>
               <p class="float-left">Odaberite studij:</p>
               <b-form-select v-on:change="getRokovi()" v-model='studijId'>
-                <option v-for="studij in studiji" :value="studij.id">{{studij.naziv}}</option>
+                <option v-for="studij in studiji" :value="studij.id" :key="studij.id">{{studij.naziv}}</option>
               </b-form-select>                  
             </b-form-group>
-            <b-form-group>
-              <b-form-radio-group
-                class="float-left"
-                v-model="odabraniSemestri"
-                :options="opcije"
-                id="radio-slots"
-                name="radio-options-slots"               
-              ></b-form-radio-group>
+           <b-form-group>
+              <p class="float-left">Odaberite semestar:</p>
+              <b-form-select  v-model='odabraniSemestar'>
+                <option v-for="opcija in opcije" :value="opcija" :key="opcija.value">{{opcija.text}}</option>
+              </b-form-select>                  
             </b-form-group>
+            {{odabraniSemestar.text}}
             <b-form-group>
               <p class="float-left">Odaberite rok:</p>
               <b-form-select  v-model='odabraniRok'>
-                <option v-for="rok in rokovi" :value="rok">{{rok}}</option>
+                <option v-for="rok in rokovi" :value="rok" :key="rok">{{rok}}</option>
               </b-form-select>                  
             </b-form-group>
             <b-form-group>
-              <p class="float-left">Odaberite studij:</p>  
+              <p class="float-left">Odaberite predmet:</p>  
               <b-form-select  v-model='predmetId'>
-                <option v-for="predmet in predmeti" :value="predmet.id">{{studij.ptiId.naziv}}</option>
+                <option v-for="predmet in predmeti" :value="predmet.id" :key="predmet.id">{{predmet}}</option>
               </b-form-select> 
             </b-form-group>
               </b-card-body>
@@ -79,8 +76,11 @@ src="../assets/logo.png"
         authToken: '',
         fakultetId: '',
         predmetId:'',
+        odabraniRok:'',
+        odabraniSemestar:'',
         hasStudiji: false,
-        studiji: [],
+        ispiti:[],
+        studiji:[],
         predmeti: [],
         odabraniSemestri: [],
         opcije: [
@@ -154,6 +154,8 @@ src="../assets/logo.png"
           this.fakultetId =res.data[0].id;
           this.getStudij() 
       })
+
+      
       },
       getRokovi(){
         console.log(this.studijId)
@@ -163,9 +165,18 @@ src="../assets/logo.png"
           }
         })
         .then(res=>{
-          this.predemti = res.data
-          console.log(this.predemti)
+          this.ispiti = res.data
+          this.filterOut();
         })
+      },
+      filterOut(){
+        for (let x in this.ispiti){
+          console.log(this.ispiti[x].ptiId.naziv)
+          if(this.predmeti.indexOf(this.ispiti[x].ptiId.naziv)==-1){
+            this.predmeti.push(this.ispiti[x].ptiId.naziv)
+          }
+        }
+         console.log(this.predmeti)
       },
        getStudij(){
         this.$axios.get(`https://is.sum.ba:4443/ISSApi/resources/fakulteti/${this.fakultetId}/studiji?order=naziv&webPrikaz=D`,{
@@ -191,6 +202,8 @@ src="../assets/logo.png"
 }
 .img{
   min-width: 50px;
+  height: 200px;
+  width: 200px;
 }
 .imgsec{
   height: 100px;

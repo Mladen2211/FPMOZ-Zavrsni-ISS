@@ -21,17 +21,10 @@
       </b-col>
     </b-row>
     </b-container>
-    <b-container>
-      <b-row v-if="hasStudiji">
-        <b-col cols="12">
-          <b-card no-body class="mb-1">
-            <b-card-header header-tag="header" variant="info" v-b-toggle.accordion>
-              Filter
-            </b-card-header>
-            <b-collapse id="accordion" visible accordion="my-accordion" role="tabpanel">
-              <b-card-body>
-                
-            <b-form-group>
+    <b-container fluid>
+      <b-row v-if="hasStudiji" class="filter">
+        <b-col cols="4" class="first">
+          <b-form-group>
               <p class="float-left">Odaberite studij:</p>
               <b-form-select v-on:change="getRokovi()" v-model='studijId'>
                 <option v-for="studij in studiji" :value="studij.id" :key="studij.id">{{studij.naziv}}</option>
@@ -39,33 +32,51 @@
             </b-form-group>
            <b-form-group>
               <p class="float-left">Odaberite semestar:</p>
-              <b-form-select  v-model='odabraniSemestar'>
-                <option v-for="opcija in opcije" :value="opcija" :key="opcija.value">{{opcija.text}}</option>
+              <b-form-select v-on:change="filterData()"  v-model='odabraniSemestar'>
+                <option v-for="opcija in opcije" :value="opcija.value" :key="opcija.value">{{opcija.text}}</option>
               </b-form-select>                  
             </b-form-group>
-            {{odabraniSemestar.text}}
             <b-form-group>
               <p class="float-left">Odaberite rok:</p>
-              <b-form-select  v-model='odabraniRok'>
+              <b-form-select v-on:change="filterData()"  v-model='odabraniRok'>
                 <option v-for="rok in rokovi" :value="rok" :key="rok">{{rok}}</option>
               </b-form-select>                  
             </b-form-group>
             <b-form-group>
               <p class="float-left">Odaberite predmet:</p>  
-              <b-form-select  v-model='predmetId'>
-                <option v-for="predmet in predmeti" :value="predmet.id" :key="predmet.id">{{predmet}}</option>
-              </b-form-select> 
+              <b-form-select v-on:change="filterData()"  v-model='predmet'>
+                <option v-for="predmet in predmeti" :value="predmet" :key="predmet">{{predmet}}</option>
+              </b-form-select>
             </b-form-group>
-              </b-card-body>
-            </b-collapse>
-          </b-card>
+        </b-col>
+        <b-col cols="8" v-if="hasRokovi">
+
+          <b-table 
+            id="my-table"
+            striped 
+            hover 
+            :items="ispiti" 
+            :fields="fields"
+            :per-page="perPage"
+            align="center"
+            :current-page="currentPage"
+            small
+            :key="ispiti.id"
+          ></b-table>
+          <b-pagination
+            v-model="currentPage"
+            :total-rows="totalItems"
+            :per-page="perPage"
+            align="center"
+            aria-controls="my-table"
+          ></b-pagination>
         </b-col>
       </b-row>
     </b-container>
   </b-container>
 </template>
-src="../assets/logo.png"
 <script>
+/*eslint-disable*/
   export default {
     data() {
       return {
@@ -73,16 +84,50 @@ src="../assets/logo.png"
           username:'',
           password: 'issapi'
         },
+        perPage: 10,
+        currentPage: 1,
+        totalItems: 0,
         authToken: '',
         fakultetId: '',
-        predmetId:'',
+        predmet:'',
         odabraniRok:'',
         odabraniSemestar:'',
         hasStudiji: false,
+        hasRokovi:false,
         ispiti:[],
         studiji:[],
         predmeti: [],
-        odabraniSemestri: [],
+        tempArr:[],
+        fields: [
+          {
+            key: 'ptiId.naziv',
+            label: 'Naziv',
+            sortable: true
+          },
+          {
+            key: 'datumRoka',
+            sortable: false
+          },
+          {
+            key: 'nositeljId.ime',
+            label: 'Ime',
+            sortable: false,
+
+          },
+          {
+            key: 'nositeljId.prezime',
+            label: 'Prezime',
+            sortable: false,
+          },
+           {
+            key: 'vrstaRoka',
+            sortable: false
+          },
+          {
+            key: 'semestar',
+            sortable: false
+          },
+        ],
         opcije: [
           {text: '1',value: '1'},
           {text: '2',value: '2'},
@@ -93,6 +138,7 @@ src="../assets/logo.png"
         ],
         rokovi: ['Ljetni ispitni rok', 'Proljetni ispitni rok', 'Zimski ispitni rok', 'Jesenjski isptitni rok', 'Dekanski ispitni rok'],
         studijId: '',
+        studijiTemp:'',
         swiperOption: {
           slidesPerView: 3,
           spaceBetween: 30,
@@ -122,6 +168,11 @@ src="../assets/logo.png"
           {id:11, naziv:"", username:"PF_ISSAPI", img:require('../assets/PF.png')}
         ]
 
+      }
+    },
+    computed: {
+      rows(){
+        this.totalItems = parseInt(this.studiji.length);
       }
     },
     methods: {
@@ -159,6 +210,7 @@ src="../assets/logo.png"
       },
       getRokovi(){
         console.log(this.studijId)
+        this.predmeti = [];
         this.$axios.get(`https://is.sum.ba:4443/ISSApi/resources/fakulteti/${this.fakultetId}/studiji/${this.studijId}/kolegiji//rokovi?akademskaGodina=2018/2019&order=ptiId.naziv&webPrikaz=D`,{
           headers: {
             'issApiAccessToken': this.authToken
@@ -166,17 +218,20 @@ src="../assets/logo.png"
         })
         .then(res=>{
           this.ispiti = res.data
+          this.hasRokovi=true;
+          this.studijiTemp = this.ispiti;
+          console.log(this.ispiti)
           this.filterOut();
         })
       },
       filterOut(){
         for (let x in this.ispiti){
-          console.log(this.ispiti[x].ptiId.naziv)
           if(this.predmeti.indexOf(this.ispiti[x].ptiId.naziv)==-1){
             this.predmeti.push(this.ispiti[x].ptiId.naziv)
           }
         }
          console.log(this.predmeti)
+         this.totalItems = parseInt(this.ispiti.length);
       },
        getStudij(){
         this.$axios.get(`https://is.sum.ba:4443/ISSApi/resources/fakulteti/${this.fakultetId}/studiji?order=naziv&webPrikaz=D`,{
@@ -189,9 +244,67 @@ src="../assets/logo.png"
           this.hasStudiji=true;
           console.log(this.studiji);
         })
-    },  
+    },
+    filterData(){
+      this.ispiti=this.studijiTemp
+      if(this.predmet !='' && this.odabraniRok !='' && this.odabraniSemestar !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].ptiId.naziv === this.predmet && this.ispiti[x].vrstaRoka === this.odabraniRok && this.ispiti[x].semestar == this.odabraniSemestar){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }
+      }else if(this.predmet !='' && this.odabraniRok !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].ptiId.naziv === this.predmet && this.ispiti[x].vrstaRoka === this.odabraniRok ){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }
+      }else if (this.odabraniRok !='' && this.odabraniSemestar !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].vrstaRoka === this.odabraniRok && this.ispiti[x].semestar == this.odabraniSemestar){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }
+      }else if (this.predmet !='' && this.odabraniSemestar !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].ptiId.naziv === this.predmet && this.ispiti[x].semestar == this.odabraniSemestar){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }        
+      } else{
+        if(this.predmet !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].ptiId.naziv === this.predmet){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }        
+      }
+      else if(this.odabraniRok !=''){
+        for (let x in this.ispiti){
+          if(this.ispiti[x].vrstaRoka === this.odabraniRok){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }
+      }
+      else if(this.odabraniSemestar !=''){
+        console.log(this.odabraniSemestar)
+        for (let x in this.ispiti){
+          if(this.ispiti[x].semestar == this.odabraniSemestar){
+            this.tempArr.push(this.ispiti[x])
+          }
+        }
+        
+      }
+      }
+      this.ispiti = this.tempArr;
+        this.totalItems = parseInt(this.ispiti.length);
+        this.tempArr = []
+        this.totalItems = parseInt(this.ispiti.length);
+    }
+      
   }
 }
+/*eslint-disable*/
 </script>
 <style >
 .p-1{
@@ -208,5 +321,11 @@ src="../assets/logo.png"
 .imgsec{
   height: 100px;
   width: 100px;
+}
+.filter{
+  margin-top: 8%;
+}
+.first{
+  border-right: lightslategray 1px solid
 }
 </style>
